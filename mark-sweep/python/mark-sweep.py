@@ -16,6 +16,9 @@ class Object:
         return filter(lambda x: x is not None, self.fields)
 
     def set_field(self, field: str, ref: Reference):
+        if field not in self.fields:
+            raise ValueError('unknown field: {} on obj: {}'.format(field, self.id))
+
         self.fields[field] = ref
 
     def size(self) -> int:
