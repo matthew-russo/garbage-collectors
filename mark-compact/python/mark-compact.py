@@ -33,6 +33,12 @@ class Object:
     def is_marked(self) -> bool:
         return self.marked
 
+    def set_forwarding_address(self, forwarding_addr: int):
+        self.forwarding_address = forwarding_addr
+
+    def forwarding_address() -> int:
+        return self.forwarding_address
+
 
 class Heap:
     def __init__(self, size: int, alignment: int):
@@ -92,7 +98,7 @@ class Collector:
     def collect(self, roots: List[Reference]):
         print('beginning collection')
         self.mark_from_roots(roots)
-        self.sweep()
+        self.compact(roots)
         print('collection complete. heap is now: {}'.format(self.heap.contents))
 
     def mark_from_roots(self, roots: List[Reference]):
@@ -124,30 +130,68 @@ class Collector:
                     child_obj.mark()
                     worklist.append(f_ref)
 
+    def compact(self, roots: List[Reference]):
+        print('beginning compaction')
+        self.compute_locations(0, len(self.heap.contents), 0)
+        self.update_references(roots, 0, len(self.heap.contents))
+        self.relocate(0, len(self.heap.contents))
+        print('compaction finished')
 
-    def sweep(self):
-        print('sweeping the heap')
-        curr_ptr = 0
-
-        while curr_ptr < len(self.heap.contents):
+    def compute_locations(self, start: int, end: int, to: int):
+        curr_ptr = start
+        free = to
+        while curr_ptr < end:
             obj_id = self.heap.contents[curr_ptr]
-
             if obj_id is None:
                 curr_ptr += 1
                 continue
 
-            if obj_id == "__ALLOCATED_BUT_EMPTY__":
-                print('There is probably a bug because we are cleaning up allocated memory that was never filled')
-                self.heap.contents[curr_ptr] = None
+            obj = self.heap.objs[obj_id]
+            if obj.is_marked():
+                obj.forwarding_address = free
+                free += obj.size()
+            curr_ptr += obj.size()
+
+    def update_references(self, roots: List[Reference], start: int, end: int):
+        for root in roots:
+            obj = self.heap.load(root)
+            for f_name, f_ref in obj.fields.items():
+                child_obj = self.heap.load(f_ref)
+                new_ref = Reference(child_obj.forwarding_address, obj.size())
+                obj.set_field(f_name, new_ref)
+
+        curr_ptr = start
+        while curr_ptr < end:
+            obj_id = self.heap.contents[curr_ptr]
+            if obj_id is None:
                 curr_ptr += 1
                 continue
 
             obj = self.heap.objs[obj_id]
+            if obj.is_marked():
+                for f_name, f_ref in obj.fields.items():
+                    child_obj = self.heap.load(f_ref)
+                    new_ref = Reference(child_obj.forwarding_address, obj.size())
+                    obj.set_field(f_name, new_ref)
+            curr_ptr += obj.size()
 
-            if not obj.is_marked():
-                print('freeing obj {} of size {}'.format(obj_id, obj.size()))
-                self.heap.free(Reference(curr_ptr, obj.size()))
+    def relocate(self, start: int, end: int):
+        curr_ptr = start
+        while curr_ptr < end:
+            obj_id = self.heap.contents[curr_ptr]
+            if obj_id is None:
+                curr_ptr += 1
+                continue
 
+            obj = self.heap.objs[obj_id]
+            if obj.is_marked():
+                new_ref = Reference(obj.forwarding_address, obj.size())
+                self.heap.store(new_ref, obj)
+                obj.unmark()
+            else:
+                for i in range(curr_ptr, curr_ptr + obj.size()):
+                    self.heap.contents[i] = None
+                del self.heap.objs[obj.id]
             curr_ptr += obj.size()
 
 class Runtime:
