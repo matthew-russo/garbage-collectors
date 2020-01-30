@@ -1,4 +1,8 @@
-#include <queue.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#include "queue.h"
 
 void queue_enqueue(struct queue * q, void * val)
 {
@@ -17,7 +21,7 @@ void queue_enqueue(struct queue * q, void * val)
         return;
     }
 
-    struct node * next = q->next;
+    struct node * next = q->head;
 
     while (next->next != NULL)
     {
@@ -55,6 +59,8 @@ bool queue_is_empty(struct queue * q)
 bool queue_is_full(struct queue * q)
 {
     // TODO 
+    printf("unimplemented queue_is_full");
+    return true;
 }
 
 uint32_t queue_size(struct queue * q)

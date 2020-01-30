@@ -1,4 +1,3 @@
-
 SLIDES=slides.tex
 
 slides:  ## Compile paper
