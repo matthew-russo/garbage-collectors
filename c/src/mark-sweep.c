@@ -1,61 +1,39 @@
-#include <stdio.h>
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-struct object
-{
-    bool marked;
-    char * id;
-    struct map * fields; // val is char *
-};
-
-struct reference
-{
-    uintptr_t address;
-    uint32_t size;
-};
-
-struct heap
-{
-    uint8_t * bitmap;
-    uintptr_t arena;
-};
-
-struct object * heap_load(struct heap * h, struct reference ref)
-{
-    uintptr_t actual_address = h->arena + ref.size;
-    struct object ** obj_ptr = (struct object **) actual_address;
-    return *obj_ptr;
-}
-
-struct reference heap_store(struct heap * h, uintptr_t address, struct object * obj)
-{
-    uintptr_t actual_address = h->arena + address;
-    memcpy((void *) actual_address, obj, sizeof(struct object));
-    struct reference ref = {
-        .address = actual_address,
-        .size = sizeof(struct object),
-    };
-    return ref;
-}
-
-uintptr_t heap_alloc(int size)
-{
-
-}
-
-void heap_free(struct reference to_free)
-{
-
-}
-
-//
+#include "object.h"
+#include "heap.h"
 
 void mark_worklist(worklist)
 {
-    
+    while (!queue_is_empty(worklist))
+    {
+        ref = queue_dequeue(worklist);
+        obj = heap_load(heap, ref);
+        // iterate object fields
+        // foreach f_name, f_ref in obj.fields.items():
+            if (f_ref == NULL)
+            {
+                continue;
+            }
+
+            child = heap_load(heap, f_ref);
+            if (child == NULL)
+            {
+                printf("ACTIVE REFERENCE LEADING TO DEAD MEMORY. THIS SHOULD BE IMPOSSIBLE");
+                exit(1);
+            }
+
+            if (!child->is_marked)
+            {
+                child->is_marked = true;
+                queue_enqueue(worklist, f_ref);
+            }
+    }
 }
 
 void mark_from_roots(roots)
@@ -75,7 +53,30 @@ void mark_from_roots(roots)
 
 void sweep()
 {
+    uintptr_t curr_ptr = heap->start;
 
+    while (curr_ptr < heap->end)
+    {
+        if (mem_allocated(curr_ptr))
+        {
+            struct object * obj = (struct object *)(void *) curr_ptr;
+            uint32_t size = obj->header.size;
+            if (obj->header.is_marked)
+            {
+                struct reference ref = {
+                    .address = curr_ptr;
+                    .size = size;
+                };
+                heap_free(ref);
+            }
+
+            curr_ptr += size;
+        }
+        else
+        {
+            curr_ptr++;
+        }
+    }
 }
 
 void collect(roots)
@@ -83,8 +84,6 @@ void collect(roots)
     mark_from_roots(roots);
     sweep();
 }
-
-//
 
 int main()
 {
