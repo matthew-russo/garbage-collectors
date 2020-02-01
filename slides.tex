@@ -38,12 +38,12 @@
 \begin{frame}
   \frametitle{Terminology}
   \begin{enumerate}
-    \item Stack & Heap
-    \item Runtime
-    \item Allocator
-    \item Collector
-    \item Mutator
-    \item Root
+    \item Stack & Heap \- Two places to store things
+    \item Runtime \- Invisible interfaces that handle everything between the Operating System and the User Code
+    \item Allocator \- Finds places to store things
+    \item Collector \- Reclaims places to store things
+    \item Mutator \- User code \-\- interacts with Runtime to make things happen
+    \item Root \- Entry in to the object graph. Stack variables, frame locals, global variables, etc.
   \end{enumerate}
 \end{frame}
 
@@ -60,24 +60,55 @@
 \begin{frame}
   \frametitle{Marking in Tracing collectors}
   \begin{enumerate}
+    \item Depth-first Search through the object graph
+    \item Tricolor abstraction
+    \item The Object Header
   \end{enumerate}
 \end{frame}
 
 \begin{frame}
   \frametitle{Mark-Sweep Collection}
+  \begin{itemize}
+    \item The Heap as Iterator
+    \begin{enumerate}
+      \item Step 1. Mark the Object Graph
+      \item Step 2. Iterate over the heap
+      \item Step 3. If the Object hasn't been marked: Delete it
+    \end{enumerate}
+  \end{itemize}
 \end{frame}
 
 \begin{frame}
   \frametitle{Mark-Compact Collection}
+  \item Handling Fragmented Memory
+  \begin{enumerate}
+    \item Step 1. Mark the Object Graph
+    \item Step 2. Iterate over the heap
+    \item Step 3. If the Object hasn't been marked: Delete it
+    \item Step 3. If the Object has    been marked: Move it to the first free space in the heap
+  \end{enumerate}
 \end{frame}
 
 \begin{frame}
   \frametitle{Copying Collection}
+  \item Handling Fragmented Memory but I'm a little bit lazier
+  \begin{enumerate}
+    \item Step 1. During Intialization: Split the heap in two
+    \item Step 2. Mark the Object Graph
+    \item Step 3. Iterate over the heap
+    \item Step 4. If the Object hasn't been marked: Do nothing
+    \item Step 5. If the Object has    been marked: Move it to the first free space in the opposite heap space
+    \item Step 6. Flip the two heap spaces
+  \end{enumerate}
 \end{frame}
 
 \begin{frame}
   \frametitle{Reference Counting Collection}
+  \item But why not ++ and \-\-
 \end{frame}
 
+\begin{frame}
+  \frametitle{A Unified Theory of Garbage Collection}
+\end{frame}
 
 \end{document}
