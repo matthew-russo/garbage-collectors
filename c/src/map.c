@@ -3,7 +3,7 @@
 
 #include "map.h"
 
-struct map * map_init(int size)
+struct map * map_init(uint32_t size)
 {
     struct map * new_map = malloc(sizeof(struct map));
     new_map->size = size;
@@ -11,19 +11,19 @@ struct map * map_init(int size)
     return new_map;
 }
 
-struct node * node_init(char * key, void * value)
+struct map_node * node_init(char * key, void * value)
 {
-    struct node * new_node = malloc(sizeof(struct node));
+    struct map_node * new_node = malloc(sizeof(struct map_node));
     new_node->key   = key;
     new_node->value = value;
     new_node->next  = NULL;
     return new_node;
 }
 
-int map_hashcode(struct map * map, char * key)
+uint32_t map_hashcode(struct map * map, char * key)
 {
     unsigned long hash = 5381;
-    int c;
+    uint32_t c;
 
     while ((c = *key++))
     {
@@ -36,16 +36,16 @@ int map_hashcode(struct map * map, char * key)
 
 bool map_contains_key(struct map * map, char * key)
 {
-    int pos = map_hashcode(map, key);
-    struct node * n = map_get(map, key);
+    uint32_t pos = map_hashcode(map, key);
+    struct map_node * n = map_get(map, key);
     return n != NULL;
 }
 
-struct node * map_get(struct map * map, char * key)
+struct map_node * map_get(struct map * map, char * key)
 {
-    int pos = map_hashcode(map, key);
-    struct node * list = map->contents[pos];
-    struct node * temp = list;
+    uint32_t pos = map_hashcode(map, key);
+    struct map_node * list = map->contents[pos];
+    struct map_node * temp = list;
 
     while (temp)
     {
@@ -62,9 +62,9 @@ struct node * map_get(struct map * map, char * key)
 
 void map_insert(struct map * map, char * key, void * value)
 {
-    int pos = map_hashcode(map, key);
-    struct node * list = map->contents[pos];
-    struct node * last = list;
+    uint32_t pos = map_hashcode(map, key);
+    struct map_node * list = map->contents[pos];
+    struct map_node * last = list;
 
     if (last == NULL)
     {
@@ -86,5 +86,54 @@ void map_insert(struct map * map, char * key, void * value)
     last->next = node_init(key, value); 
 }
 
+struct map_iterator map_iter(struct map * map)
+{
+    struct map_iterator iter;
+    iter.map = map;
+    iter.current = map->contents[0];
+    iter.curr_index = 0;
+    return iter;
+}
 
+void map_iter_restart(struct map_iterator * map_iter)
+{
+    map_iter->current = map_iter->map->contents[0];
+}
+
+void map_iter_next(struct map_iterator * map_iter)
+{
+    if (map_iter->current->next != NULL)
+    {
+        map_iter->current = map_iter->current->next;
+        return;
+    }
+
+    map_iter->curr_index += 1;
+    map_iter->current = map_iter->map->contents[map_iter->curr_index];
+}
+
+bool map_iter_is_done(struct map_iterator * map_iter)
+{
+    if (map_iter->current->next != NULL)
+    {
+        return false;
+    }
+
+    return map_iter->curr_index == map_iter->map->size;
+}
+
+struct map_node * map_iter_current_node(struct map_iterator * map_iter)
+{
+    return map_iter->current;
+}
+
+char * map_iter_current_key(struct map_iterator * map_iter)
+{
+    return map_iter->current->key;
+}
+
+void * map_iter_current_value(struct map_iterator * map_iter)
+{
+    return map_iter->current->value;
+}
 

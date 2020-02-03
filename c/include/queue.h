@@ -4,18 +4,19 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-struct node
+struct queue_node
 {
     void * val;
-    struct node * next;
+    struct queue_node * next;
 };
 
 struct queue
 {
-    int size;
-    struct node * head; 
+    uint32_t size;
+    struct queue_node * head; 
 };
 
+struct queue * queue_init(uint32_t size);
 void queue_enqueue(struct queue *, void *);
 void * queue_dequeue(struct queue *);
 void * queue_peek(struct queue *);

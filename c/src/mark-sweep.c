@@ -7,130 +7,193 @@
 
 #include "object.h"
 #include "heap.h"
+#include "map.h"
+#include "queue.h"
 
-void mark_worklist(worklist)
+#define DEFAULT_HEAP_SIZE 100
+
+struct root {
+    struct object * obj;
+    struct root * next;
+};
+
+struct runtime
+{
+    struct heap * heap;
+    struct root * roots;
+};
+
+struct runtime * runtime_init(struct heap * heap)
+{
+    struct runtime * runtime = malloc(sizeof(struct runtime));
+    runtime->heap = heap;
+    return runtime;
+};
+
+void runtime_instantiate(struct runtime * runtime,struct object * object)
+{
+    uintptr_t addr = heap_alloc(runtime->heap, object->header.size);
+    heap_store(runtime->heap, addr, object);
+}
+
+void runtime_add_root(struct runtime * runtime, struct object object)
+{
+    printf("unimplemented runtime_add_root");
+    exit(1);
+}
+
+void runtime_mark_worklist(struct runtime * runtime, struct queue * worklist)
 {
     while (!queue_is_empty(worklist))
     {
-        ref = queue_dequeue(worklist);
-        obj = heap_load(heap, ref);
-        // iterate object fields
-        // foreach f_name, f_ref in obj.fields.items():
+        struct object * obj = (struct object *)queue_dequeue(worklist);
+        struct map_iterator obj_field_iter = map_iter(obj->fields);
+        for (struct reference * f_ref = (struct reference *)map_iter_current_value(&obj_field_iter);
+            !map_iter_is_done(&obj_field_iter);
+            map_iter_next(&obj_field_iter))
+        {
             if (f_ref == NULL)
             {
                 continue;
             }
 
-            child = heap_load(heap, f_ref);
+            struct object * child = heap_load(runtime->heap, *f_ref);
             if (child == NULL)
             {
                 printf("ACTIVE REFERENCE LEADING TO DEAD MEMORY. THIS SHOULD BE IMPOSSIBLE");
                 exit(1);
             }
 
-            if (!child->is_marked)
+            if (!child->header.is_marked)
             {
-                child->is_marked = true;
-                queue_enqueue(worklist, f_ref);
+                child->header.is_marked = true;
+                queue_enqueue(worklist, child);
             }
+        }
     }
 }
 
-void mark_from_roots(roots)
+void runtime_mark_from_roots(struct runtime * runtime)
 {
-    size_t roots_length = sizeof(roots) / sizeof(roots[0]);
-    for (int i = 0 ; i < roots_length; i++)
+    struct queue * worklist = queue_init(DEFAULT_HEAP_SIZE);
+ 
+    struct root * current_root = runtime->roots;
+    while (current_root != NULL)
     {
-        struct object * obj = heap_load(heap, roots[i]);
-        if (obj != NULL && !obj->is_marked)
+        struct object * obj = current_root->obj;
+        current_root = current_root->next;
+        if (obj != NULL && !obj->header.is_marked)
         {
-            obj->is_marked = true;
-            worklist[worklist_ptr++] = ref;
-            mark_worklist(worklist);
+            obj->header.is_marked = true;
+            queue_enqueue(worklist, obj);
+            runtime_mark_worklist(runtime, worklist);
         }
     }
 }
 
-void sweep()
+void runtime_sweep(struct runtime * runtime)
 {
-    uintptr_t curr_ptr = heap->start;
+    struct heap_iterator heap_iter = heap_iterator_init(runtime->heap);
 
-    while (curr_ptr < heap->end)
+    for (struct object * obj = heap_iter_current_object(&heap_iter);
+        !heap_iter_is_done(&heap_iter);
+        heap_iter_next(&heap_iter))
     {
-        if (mem_allocated(curr_ptr))
+        uint32_t size = obj->header.size;
+        if (obj->header.is_marked)
         {
-            struct object * obj = (struct object *)(void *) curr_ptr;
-            uint32_t size = obj->header.size;
-            if (obj->header.is_marked)
-            {
-                struct reference ref = {
-                    .address = curr_ptr;
-                    .size = size;
-                };
-                heap_free(ref);
-            }
-
-            curr_ptr += size;
-        }
-        else
-        {
-            curr_ptr++;
+            heap_free(runtime->heap, obj);
         }
     }
 }
 
-void collect(roots)
+void runtime_collect(runtime)
 {
-    mark_from_roots(roots);
-    sweep();
+    runtime_mark_from_roots(runtime);
+    runtime_sweep(runtime);
 }
 
 int main()
 {
-    struct heap * heap = heap_init(size, alignment);
+    struct heap * heap = heap_init(DEFAULT_HEAP_SIZE /*, alignment */);
     struct runtime * runtime = runtime_init(heap);
 
+    struct map * r1_fields = map_init(2);
+    map_insert(r1_fields, "a1", NULL);
+    map_insert(r1_fields, "a2", NULL);
     struct object r1 = {
-        .marked = false,
+        .header = {
+            .is_marked = false,
+            .size = sizeof(struct object),
+        },
         .id = "r1",
         .fields = r1_fields,
     };
-    runtime->new(r1);
+    runtime_instantiate(runtime, &r1);
+    printf("intantiated r1");
 
+    struct map * a1_fields = map_init(2);
+    map_insert(a1_fields, "b1", NULL);
+    map_insert(a1_fields, "b2", NULL);
     struct object a1 = {
-        .marked = false,
+        .header = {
+            .is_marked = false,
+            .size = sizeof(struct object),
+        },
         .id = "a1",
         .fields = a1_fields,
     };
-    runtime->new(a1);
+    runtime_instantiate(runtime, &a1);
+    printf("intantiated a1");
 
     struct object a2 = {
-        .marked = false,
+        .header = {
+            .is_marked = false,
+            .size = sizeof(struct object),
+        },
         .id = "a2",
-        .fields = a2_fields,
+        .fields = map_init(0),
     };
-    runtime->new(a2);
+    runtime_instantiate(runtime, &a2);
+    printf("intantiated a2");
 
     struct object b1 = {
-        .marked = false,
+        .header = {
+            .is_marked = false,
+            .size = sizeof(struct object),
+        },
         .id = "b1",
-        .fields = b1_fields,
+        .fields = map_init(0),
     };
-    runtime->new(b1);
+    runtime_instantiate(runtime, &b1);
+    printf("intantiated b1");
 
     struct object b2 = {
-        .marked = false,
+        .header = {
+            .is_marked = false,
+            .size = sizeof(struct object),
+        },
         .id = "b2",
-        .fields = b2_fields,
+        .fields = map_init(0),
     };
-    runtime->new(b2);
+    runtime_instantiate(runtime, &b2);
+    printf("intantiated b2");
 
     struct object c = {
-        .marked = false,
+        .header = {
+            .is_marked = false,
+            .size = sizeof(struct object),
+        },
         .id = "c",
-        .fields = c_fields,
+        .fields = map_init(0),
     };
-    runtime->new(c);
+    runtime_instantiate(runtime, &c);
+    printf("intantiated c");
+
+    runtime_add_root(runtime, r1);
+    printf("added root r1");
+    runtime_collect(runtime);
+    printf("rutime collected");
 
     free(runtime);
     free(heap);

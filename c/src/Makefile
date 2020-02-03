@@ -7,10 +7,10 @@ LDIR =../lib
 
 LIBS=-lm
 
-_DEPS = map.h queue.h
+_DEPS = map.h queue.h heap.h object.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = map.o queue.o
+_OBJ = map.o queue.o heap.o object.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 $(ODIR)/%.o: %.c $(DEPS)

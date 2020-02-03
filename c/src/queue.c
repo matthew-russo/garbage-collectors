@@ -4,6 +4,13 @@
 
 #include "queue.h"
 
+struct queue * queue_init(uint32_t size)
+{
+    struct queue * queue = malloc(sizeof(struct queue));
+    queue->size = size;
+    queue->head = NULL;
+}
+
 void queue_enqueue(struct queue * q, void * val)
 {
     if (queue_is_full(q))
@@ -11,7 +18,7 @@ void queue_enqueue(struct queue * q, void * val)
         // TODO -> handle full queue
     }
  
-    struct node * new_node = malloc(sizeof(struct node));
+    struct queue_node * new_node = malloc(sizeof(struct queue_node));
     new_node->val  = val;
     new_node->next = NULL;
 
@@ -21,7 +28,7 @@ void queue_enqueue(struct queue * q, void * val)
         return;
     }
 
-    struct node * next = q->head;
+    struct queue_node * next = q->head;
 
     while (next->next != NULL)
     {
@@ -38,7 +45,7 @@ void * queue_dequeue(struct queue * q)
         return NULL;
     }
 
-    struct node * head_node = q->head;
+    struct queue_node * head_node = q->head;
     q->head = head_node->next;
     void * val = head_node->val;
     free(head_node);
@@ -47,7 +54,7 @@ void * queue_dequeue(struct queue * q)
 
 void * queue_peek(struct queue * q)
 {
-    struct node * head_node = q->head;
+    struct queue_node * head_node = q->head;
     return head_node->val;
 }
 
