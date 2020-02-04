@@ -10,7 +10,7 @@ class Object:
     def __init__(self, id: str, fields: List[str]):
         self.id = id
         self.fields: Dict[str, Reference] = {f:None for f in fields}
-        self.marked = False
+        self.forwarding_address = None
 
     def active_fields(self):
         return filter(lambda x: x is not None, self.fields)
@@ -24,15 +24,6 @@ class Object:
     def size(self) -> int:
         return len(self.fields) + 1
 
-    def mark(self):
-        self.marked = True
-
-    def unmark(self):
-        self.marked = False
-
-    def is_marked(self) -> bool:
-        return self.marked
-
     def set_forwarding_address(self, forwarding_addr: int):
         self.forwarding_address = forwarding_addr
 
@@ -45,17 +36,23 @@ class Heap:
         if size % alignment != 0:
             msg = 'Heap size needs to be a multiple of given alignment: {}, but was {}'.format(alignment, size)
             raise ValueError(msg)
-        actual_size = size / 2
+        actual_size = size // 2
         self.size: int                   = actual_size
-        self.from_space: List[Reference] = [None for _ in range(actual_size)]
-        self.to_space: List[Reference]   = [None for _ in range(actual_size)]
+        self.current: List[Reference] = [None for _ in range(actual_size)]
+        self.copy_space: List[Reference]   = [None for _ in range(actual_size)]
+        self.copy_ptr = 0
         self.objs: Dict[str, Object]     = {} # obj id to obj
 
     def load(self, ref: Reference) -> Object:
         obj_id = self.current[ref.address]
         return self.objs[obj_id]
     
-    def store(self, ref: Reference, obj: Object):
+    def store(self, ref: Reference, obj: Object, is_copy=False):
+        memory_space: List[Reference] = self.current
+
+        if is_copy:
+            memory_space = self.copy_space
+
         if ref.size != obj.size():
             print('Trying to store object of size: {} in a reference slot of size: {}'.format(obj.size(), ref.size))
             sys.exit(1)
@@ -85,6 +82,16 @@ class Heap:
 
         return None
 
+    def alloc_from_copy(self, size: int) -> Reference:
+        to_return: int = self.copy_ptr
+        self.copy_ptr += size
+        return to_return
+
+    def flip(self):
+        self.current = self.copy_space
+        self.copy_space = [None for _ in range(len(self.current))]
+        self.copy_ptr = 0
+
     def free(self, ref: Reference):
         obj_id = self.current[ref.address]
         del self.objs[obj_id]
@@ -94,134 +101,40 @@ class Heap:
 
 class Collector:
     def __init__(self, heap: Heap):
-        self.heap = heap
-
-    def collect():
-        flip()
-        initialize(worklist)
-        for ref in roots:
-            process(ref)
-        while worklist:
-            ref = worklist.pop()
-            scan(ref)
-
-    def flip():
-        temp = self.heap.to_space
-        self.heap.to_space = self.heap.from_space
-        self.heap.from_space = temp
-
-    def scan(ref: Reference):
-        obj = self.heap.load(ref)
-        for f_name, f_ref in obj.fields.items():
-            process(f_ref)
-
-    def process(ref: Reference):
-        obj = self.heap.load(ref)
-        if obj is not None:
-            r
-
-    def forward():
-    
-    def copy():
+        self.heap: Heap = heap
+        self.worklist: List[Reference] = []
 
     def collect(self, roots: List[Reference]):
-        print('beginning collection')
-        self.mark_from_roots(roots)
-        self.compact(roots)
-        print('collection complete. heap is now: {}'.format(self.heap.contents))
-
-    def mark_from_roots(self, roots: List[Reference]):
-        print('marking roots')
-        worklist: List[Reference] = []
-        for ref in roots:
-            obj = self.heap.load(ref)
-            print('checking root: {}'.format(obj.id))
-            if obj != None and not obj.is_marked():
-                obj.mark()
-                worklist.append(ref)
-                self.mark(worklist)
-
-    def mark(self, worklist: List[Reference]):
-        print('marking the worklist')
-        while worklist:
-            ref = worklist.pop()
-            obj = self.heap.load(ref)
-            for f_name, f_ref in obj.fields.items():
-                if f_ref is None:
-                    continue
-
-                child_obj = self.heap.load(f_ref)
-                if child_obj is None:
-                    print('ACTIVE REFERENCE LEADING TO DEAD MEMORY. THIS SHOULD BE IMPOSSIBLE')
-                    sys.exit(1)
-
-                if not child_obj.is_marked():
-                    child_obj.mark()
-                    worklist.append(f_ref)
-
-    def compact(self, roots: List[Reference]):
-        print('beginning compaction')
-        self.compute_locations(0, len(self.heap.contents), 0)
-        self.update_references(roots, 0, len(self.heap.contents))
-        self.relocate(0, len(self.heap.contents))
-        print('compaction finished')
-
-    def compute_locations(self, start: int, end: int, to: int):
-        curr_ptr = start
-        free = to
-        while curr_ptr < end:
-            obj_id = self.heap.contents[curr_ptr]
-            if obj_id is None:
-                curr_ptr += 1
-                continue
-
-            obj = self.heap.objs[obj_id]
-            if obj.is_marked():
-                obj.forwarding_address = free
-                free += obj.size()
-            curr_ptr += obj.size()
-
-    def update_references(self, roots: List[Reference], start: int, end: int):
+        self.worlist: List[Reference] = []
         for root in roots:
-            obj = self.heap.load(root)
-            for f_name, f_ref in obj.fields.items():
-                child_obj = self.heap.load(f_ref)
-                new_ref = Reference(child_obj.forwarding_address, obj.size())
-                obj.set_field(f_name, new_ref)
+            root.address = self.process(root)
+        while self.worklist:
+            ref = self.worklist.pop()
+            self.scan(ref)
+        self.heap.flip()
 
-        curr_ptr = start
-        while curr_ptr < end:
-            obj_id = self.heap.contents[curr_ptr]
-            if obj_id is None:
-                curr_ptr += 1
-                continue
+    def scan(self, ref: Reference):
+        obj = self.heap.load(ref)
+        for f_name, f_ref in obj.fields.items():
+            obj.fields[f_name].address = self.process(f_ref)
 
-            obj = self.heap.objs[obj_id]
-            if obj.is_marked():
-                for f_name, f_ref in obj.fields.items():
-                    child_obj = self.heap.load(f_ref)
-                    new_ref = Reference(child_obj.forwarding_address, obj.size())
-                    obj.set_field(f_name, new_ref)
-            curr_ptr += obj.size()
+    def process(self, ref: Reference) -> int:
+        obj: Object = self.heap.load(ref)
+        if obj is not None:
+            return self.forward(obj)
 
-    def relocate(self, start: int, end: int):
-        curr_ptr = start
-        while curr_ptr < end:
-            obj_id = self.heap.contents[curr_ptr]
-            if obj_id is None:
-                curr_ptr += 1
-                continue
-
-            obj = self.heap.objs[obj_id]
-            if obj.is_marked():
-                new_ref = Reference(obj.forwarding_address, obj.size())
-                self.heap.store(new_ref, obj)
-                obj.unmark()
-            else:
-                for i in range(curr_ptr, curr_ptr + obj.size()):
-                    self.heap.contents[i] = None
-                del self.heap.objs[obj.id]
-            curr_ptr += obj.size()
+    def forward(self, obj: Object) -> int:
+        to_addr: int = obj.forwarding_address
+        if to_addr is None:
+            to_addr = self.copy(obj)
+        return to_addr
+    
+    def copy(self, obj: Object):
+        to_addr: int = self.heap.alloc_from_copy(obj.size())
+        self.heap.store(Reference(address=to_addr, size=obj.size()), obj, is_copy=True)
+        obj.forwarding_address = to_addr
+        self.worklist.append(Reference(address=to_addr, size=obj.size()))
+        return to_addr
 
 class Runtime:
     def __init__(self, heap_size: int, heap_alignment: int):
@@ -294,4 +207,4 @@ def build_object_graph(runtime: Runtime):
 
 
 if __name__ == "__main__":
-    m
+    main()
