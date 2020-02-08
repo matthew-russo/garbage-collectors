@@ -79,6 +79,13 @@
 \end{frame}
 
 \begin{frame}
+  \frametitle{Concerns?}
+  \begin{itemize}
+    \item What will go wrong with this over time?
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
   \frametitle{Mark-Compact Collection}
   \item Handling Fragmented Memory
   \begin{enumerate}
@@ -105,10 +112,41 @@
 \begin{frame}
   \frametitle{Reference Counting Collection}
   \item But why not ++ and \-\-
+  \item Read/Write Barriers
+  \item Write Barries now increment and decrement reference counts of objects
+\end{frame}
+
+\begin{frame}
+  \frametitle{Problems?}
+  \item Cyclic references
+  \item Unpredictable, recursive collections
+\end{frame}
+
+\begin{frame}
+  \frametitle{Complex Reference Counting Collection}
+  \item Deferred collection
+  \item Identifying cycles
 \end{frame}
 
 \begin{frame}
   \frametitle{A Unified Theory of Garbage Collection}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{What Next?}
+  \item Concurrent collection
+  \item Generational collection
+  \item Production GC systems: JVM (CMS, G1GC, ZGC, etc.), Go, CLR (???)
+  \item Monitoring/Tuning GC systems: what metrics are available, how to analyze performance, what parameters to tune
+\end{frame}
+
+\begin{frame}
+  \frametitle{Questions?}
+  \item Medium
+  \item Time/Space
+  \item Topics
+  \item Speakers
 \end{frame}
 
 \end{document}
