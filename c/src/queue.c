@@ -9,13 +9,16 @@ struct queue * queue_init(uint32_t size)
     struct queue * queue = malloc(sizeof(struct queue));
     queue->size = size;
     queue->head = NULL;
+    return queue;
 }
 
 void queue_enqueue(struct queue * q, void * val)
 {
     if (queue_is_full(q))
     {
-        // TODO -> handle full queue
+        printf("QUEUE IS FULL. OH NO\n");
+        fflush(stdout);
+        exit(1);
     }
  
     struct queue_node * new_node = malloc(sizeof(struct queue_node));
@@ -65,9 +68,14 @@ bool queue_is_empty(struct queue * q)
 
 bool queue_is_full(struct queue * q)
 {
-    // TODO 
-    printf("unimplemented queue_is_full");
-    return true;
+    uint32_t count = 0;
+    struct queue_node * next = q->head;
+    while (next != NULL)
+    {
+        count++;
+        next = next->next;
+    }
+    return count == q->size;
 }
 
 uint32_t queue_size(struct queue * q)

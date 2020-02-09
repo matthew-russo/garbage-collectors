@@ -1,13 +1,20 @@
 #include <stddef.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "map.h"
 
 struct map * map_init(uint32_t size)
 {
+    struct map_node ** contents = malloc(sizeof(struct map_node *) * size);
+    for (uint32_t i = 0; i < size; i++)
+    {
+        contents[i] = NULL;
+    }
+
     struct map * new_map = malloc(sizeof(struct map));
     new_map->size = size;
-    new_map->contents = NULL;
+    new_map->contents = contents;
     return new_map;
 }
 
@@ -63,35 +70,55 @@ struct map_node * map_get(struct map * map, char * key)
 void map_insert(struct map * map, char * key, void * value)
 {
     uint32_t pos = map_hashcode(map, key);
+
     struct map_node * list = map->contents[pos];
     struct map_node * last = list;
 
     if (last == NULL)
     {
-        map->contents[pos] = node_init(key, value);
+        struct map_node * n = node_init(key, value);
+        map->contents[pos] = n;
         return;
     }
-
-    while (last->next != NULL)
+    else
     {
-        if (last->key == key)
-        {
-            last->value = value;
-            return;
-        }
-
-        last = last->next;
+        last->value = value;
     }
 
-    last->next = node_init(key, value); 
+    // if (last == NULL)
+    // {
+    //     struct map_node * n = node_init(key, value);
+    //     map->contents[pos] = n;
+    //     return;
+    // }
+
+    // while (last->next != NULL)
+    // {
+    //     if (last->key == key)
+    //     {
+    //         last->value = value;
+    //         return;
+    //     }
+
+    //     last = last->next;
+    // }
+
+    // last->next = node_init(key, value); 
 }
 
 struct map_iterator map_iter(struct map * map)
 {
+    uint32_t curr_index = 0;
+    while (curr_index < map->size &&
+        map->contents[curr_index] == NULL)
+    {
+        curr_index++;
+    }
+
     struct map_iterator iter;
     iter.map = map;
-    iter.current = map->contents[0];
-    iter.curr_index = 0;
+    iter.current = map->contents[curr_index];
+    iter.curr_index = curr_index;
     return iter;
 }
 
@@ -102,24 +129,20 @@ void map_iter_restart(struct map_iterator * map_iter)
 
 void map_iter_next(struct map_iterator * map_iter)
 {
-    if (map_iter->current->next != NULL)
+    map_iter->curr_index++;
+  
+    while (map_iter->curr_index < map_iter->map->size &&
+        map_iter->map->contents[map_iter->curr_index] == NULL)
     {
-        map_iter->current = map_iter->current->next;
-        return;
+        map_iter->curr_index++;
     }
 
-    map_iter->curr_index += 1;
     map_iter->current = map_iter->map->contents[map_iter->curr_index];
 }
 
 bool map_iter_is_done(struct map_iterator * map_iter)
 {
-    if (map_iter->current->next != NULL)
-    {
-        return false;
-    }
-
-    return map_iter->curr_index == map_iter->map->size;
+    return map_iter->curr_index >= map_iter->map->size;
 }
 
 struct map_node * map_iter_current_node(struct map_iterator * map_iter)

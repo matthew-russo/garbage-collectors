@@ -17,23 +17,23 @@ struct heap * heap_init(uint32_t size)
     {
         heap->bitmap[i] = 0;
     }
-    heap->arena = (uintptr_t)malloc(sizeof(struct object) * size);
+    heap->arena = malloc(sizeof(struct object) * size);
     return heap;
 }
 
 struct object * heap_load(struct heap * heap, struct reference ref)
 {
-    uintptr_t actual_address = heap->arena + ref.size;
-    struct object ** obj_ptr = (struct object **) actual_address;
-    return *obj_ptr;
+    uintptr_t actual_address = (uintptr_t)heap->arena + ref.address;
+    struct object * obj_ptr = (struct object *) actual_address;
+    return obj_ptr;
 }
 
 struct reference heap_store(struct heap * heap, uintptr_t address, struct object * obj)
 {
-    uintptr_t actual_address = heap->arena + address;
+    uintptr_t actual_address = (uintptr_t)heap->arena + address;
     memcpy((void *) actual_address, obj, sizeof(struct object));
     struct reference ref = {
-        .address = actual_address,
+        .address = address,
         .size = sizeof(struct object),
     };
     return ref;
@@ -41,7 +41,7 @@ struct reference heap_store(struct heap * heap, uintptr_t address, struct object
 
 bool heap_mem_allocated(struct heap * heap, uintptr_t address)
 {
-    uintptr_t offset = address - heap->arena;
+    uintptr_t offset = address - (uintptr_t) heap->arena;
     uintptr_t index = offset / sizeof(struct object);
     return heap->bitmap[index] != 0;
 }
@@ -54,7 +54,7 @@ uintptr_t heap_alloc(struct heap * heap, uint32_t size)
         {
             heap->bitmap[i] = 1;
             uintptr_t offset = (uintptr_t) (sizeof(struct object) * i);
-            return heap->arena + offset;
+            return offset;
         }
     }
 
@@ -63,8 +63,11 @@ uintptr_t heap_alloc(struct heap * heap, uint32_t size)
 
 void heap_free(struct heap * heap, struct object * to_free)
 {
-    printf("unimplemented heap_free");
-    exit(1);
+    uintptr_t offset = (uintptr_t) to_free - (uintptr_t)heap->arena;
+    uint32_t index = offset / sizeof(struct object);
+
+    memset(to_free, NULL, sizeof(struct object));
+    heap->bitmap[index] = 0;
 }
 
 struct heap_iterator heap_iterator_init(struct heap * heap)
@@ -76,9 +79,8 @@ struct heap_iterator heap_iterator_init(struct heap * heap)
         if (heap->bitmap[bitmap_index] != 0)
         {
             uintptr_t offset = (uintptr_t) (sizeof(struct object) * bitmap_index);
-            uintptr_t actual_address =  heap->arena + offset;
-            struct object ** obj_ptr = (struct object **) actual_address;
-            first_obj = *obj_ptr;
+            struct reference ref = { .address = offset, .size = sizeof(struct object) };
+            first_obj = heap_load(heap, ref);
             break;
         }
     }
@@ -99,9 +101,8 @@ void heap_iter_restart(struct heap_iterator * iter)
         if (iter->heap->bitmap[bitmap_index] != 0)
         {
             uintptr_t offset = (uintptr_t) (sizeof(struct object) * bitmap_index);
-            uintptr_t actual_address =  iter->heap->arena + offset;
-            struct object ** obj_ptr = (struct object **) actual_address;
-            first_obj = *obj_ptr;
+            struct reference ref = { .address = offset, .size = sizeof(struct object) };
+            first_obj = heap_load(iter->heap, ref);
             break;
         }
     }
@@ -111,13 +112,14 @@ void heap_iter_restart(struct heap_iterator * iter)
 
 void heap_iter_next(struct heap_iterator * iter)
 {
-    iter->curr_bitmap_index = iter->curr_bitmap_index + 1;
-    for (uint32_t i = iter->curr_bitmap_index; i < iter->heap->size; i++)
+    iter->curr_bitmap_index++;
+    for (; iter->curr_bitmap_index < iter->heap->size; iter->curr_bitmap_index++)
     {
-        if (iter->heap->bitmap[i] != 0)
+        if (iter->heap->bitmap[iter->curr_bitmap_index] != 0)
         {
             struct reference ref;
-            uintptr_t offset = iter->heap->arena + ((uintptr_t) i * sizeof(struct object));
+            uintptr_t offset = (uintptr_t) iter->curr_bitmap_index * sizeof(struct object);
+            fflush(stdout);
             ref.address = offset;
             ref.size = sizeof(struct object);
             iter->current = heap_load(iter->heap, ref);

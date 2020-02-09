@@ -15,7 +15,7 @@ struct reference
 struct heap
 {
     uint8_t * bitmap;
-    uintptr_t arena;
+    void* arena;
     uint32_t  size;
 };
 
