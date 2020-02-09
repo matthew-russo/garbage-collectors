@@ -1,87 +1,11 @@
 from typing import List
+from object import Object, Reference
+from heap import Heap
 
-class Reference:
-    def __init__(self, address: int, size: int):
-        self.address = address
-        self.size = size
-
-
-class Object:
-    def __init__(self, id: str, fields: List[str]):
-        self.id = id
-        self.fields: Dict[str, Reference] = {f:None for f in fields}
-        self.marked = False
-
-    def active_fields(self):
-        return filter(lambda x: x is not None, self.fields)
-
-    def size(self) -> int:
-        return len(self.fields) + 1
-
-    def mark(self):
-        self.marked = True
-
-    def unmark(self):
-        self.marked = False
-
-    def is_marked(self) -> bool:
-        return self.marked
-
-
-class Heap:
-    def __init__(self, size: int, alignment: int):
-        if size % alignment != 0:
-            msg = 'Heap size needs to be a multiple of given alignment: {}, but was {}'.format(alignment, size)
-            raise ValueError(msg)
-
-        self.size = size
-        self.contents = [None for _ in range(size)]
-        self.objs = {} # obj id to obj
-
-    def load(self, ref: Reference) -> Object:
-        obj_id = self.contents[ref.address]
-        return self.objs[obj_id]
-    
-    def store(self, ref: Reference, obj: Object):
-        if ref.size != obj.size():
-            print('Trying to store object of size: {} in a reference slot of size: {}'.format(obj.size(), ref.size))
-            sys.exit(1)
-
-        for i in range(ref.address, ref.address + ref.size):
-            self.contents[i] = obj.id
-        
-        self.objs[obj.id] = obj
-
-    def alloc(self, size: int) -> Reference:
-        print('trying to allocate a chunk of size: {} while heap is: {}'.format(size, self.contents))
-        
-        # need to find the first range of `size` that is all `None`s
-        in_a_row = 0
-        for n, content in enumerate(self.contents):
-            if content is None:
-                in_a_row += 1
-
-                if in_a_row == size:
-                    starting_address = n - size + 1
-                    print('found a valid chunk to allocate starting at address: {}'.format(starting_address))
-                    for i in range(starting_address, starting_address + size):
-                        self.contents[i] = "__ALLOCATED_BUT_EMPTY__"
-                    return Reference(starting_address, size)
-            else:
-                in_a_row = 0
-
-        return None
-
-    def free(self, ref: Reference):
-        obj_id = self.contents[ref.address]
-        del self.objs[obj_id]
-
-        for i in range(ref.address, ref.address + ref.size):
-            self.contents[i] = None
 
 class Collector:
     def __init__(self, heap: Heap):
-        self.heap = heap
+        self.heap: Heap = heap
 
     def collect(self, roots: List[Reference]):
         print('beginning collection')
@@ -103,13 +27,13 @@ class Collector:
     def mark(self, worklist: List[Reference]):
         print('marking the worklist')
         while worklist:
-            ref = worklist.pop()
-            obj = self.heap.load(ref)
+            ref: Reference = worklist.pop()
+            obj: Object = self.heap.load(ref)
             for f_name, f_ref in obj.fields.items():
                 if f_ref is None:
                     continue
 
-                child_obj = self.heap.load(f_ref)
+                child_obj: Object = self.heap.load(f_ref)
                 if child_obj is None:
                     print('ACTIVE REFERENCE LEADING TO DEAD MEMORY. THIS SHOULD BE IMPOSSIBLE')
                     sys.exit(1)
@@ -121,7 +45,7 @@ class Collector:
 
     def sweep(self):
         print('sweeping the heap')
-        curr_ptr = 0
+        curr_ptr: int = 0
 
         while curr_ptr < len(self.heap.contents):
             obj_id = self.heap.contents[curr_ptr]

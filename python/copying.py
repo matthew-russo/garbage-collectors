@@ -1,29 +1,6 @@
 from typing import List
 
-class Reference:
-    def __init__(self, address: int, size: int):
-        self.address = address
-        self.size = size
-
-
-class Object:
-    def __init__(self, id: str, fields: List[str]):
-        self.id = id
-        self.fields: Dict[str, Reference] = {f:None for f in fields}
-        self.forwarding_address = None
-
-    def active_fields(self):
-        return filter(lambda x: x is not None, self.fields)
-
-    def size(self) -> int:
-        return len(self.fields) + 1
-
-    def set_forwarding_address(self, forwarding_addr: int):
-        self.forwarding_address = forwarding_addr
-
-    def forwarding_address() -> int:
-        return self.forwarding_address
-
+from object import Object, Reference
 
 class Heap:
     def __init__(self, size: int, alignment: int):
