@@ -66,7 +66,7 @@ void heap_free(struct heap * heap, struct object * to_free)
     uintptr_t offset = (uintptr_t) to_free - (uintptr_t)heap->arena;
     uint32_t index = offset / sizeof(struct object);
 
-    memset(to_free, NULL, sizeof(struct object));
+    memset(to_free, 0, sizeof(struct object));
     heap->bitmap[index] = 0;
 }
 
