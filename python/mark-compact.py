@@ -226,13 +226,13 @@ class Runtime:
     def add_root(self, ref: Reference):
         self.roots.append(ref)
 
-    def collect(self, interactive = False):
+    def collect(self):
         self.collector.collect(self.roots)
 
 def main():
     runtime = Runtime(heap_size = 100, heap_alignment = 1)
     build_object_graph(runtime) 
-    runtime.collect(interactive = True)
+    runtime.collect()
 
 # builds the following object graph
 #

@@ -1,10 +1,17 @@
 from typing import List
+from enum import Enum
 
 class Reference:
     def __init__(self, address: int, size: int):
         self.address = address
         self.size = size
 
+
+class GarbageColor(Enum):
+    PURPLE = 1
+    BLACK = 2
+    GREY = 3
+    WHITE = 4
 
 class Object:
     def __init__(self, id: str, fields: List[str]):
@@ -14,8 +21,6 @@ class Object:
 
     def active_fields(self):
         return filter(lambda x: x is not None, self.fields)
-
-
 
     def size(self) -> int:
         return len(self.fields) + 1
@@ -86,7 +91,6 @@ class Runtime:
     def __init__(self, heap_size: int, heap_alignment: int):
         self.roots = []
         self.heap = Heap(size = heap_size, alignment = heap_alignment)
-        self.collector = Collector(self.heap)
         self.candidates: Set[Reference] = set()
 
     # Mutator methods
@@ -96,7 +100,7 @@ class Runtime:
         ref = self.heap.alloc(obj.size())
 
         if ref == None:
-            self.collector.collect(self.roots)
+            self.collect(self.roots)
             ref = self.heap.alloc(obj.size())
             if ref == None:
                 raise Exception("out of memory")
@@ -124,7 +128,7 @@ class Runtime:
         if ref is not None:
             obj = self.heap.load(ref)
             obj.rc = obj.rc + 1
-            obj.color = Color.BLACK
+            obj.color = GarbageColor.BLACK
 
     def delete_reference(self, ref: Reference):
         if ref is not None:
@@ -139,14 +143,14 @@ class Runtime:
         obj = self.heap.load(ref)
         for f_name, f_ref in obj.fields.items():
             delete_reference(f_ref)
-        obj.color = Color.BLACK
+        obj.color = GarbageColor.BLACK
         if obj not in self.candidates:
             self.heap.free(ref)
 
     def candidate(self, ref: Reference):
         obj = self.heap.load(ref)
-        if obj.color != Color.PURPLE
-            obj.color = Color.PURPLE
+        if obj.color != GarbageColor.PURPLE:
+            obj.color = GarbageColor.PURPLE
             self.candidates.add(ref)
 
     def collect(self):
@@ -156,18 +160,18 @@ class Runtime:
         self.collect_candidates()
 
     def mark_candidates(self):
-        for ref in candidates:
+        for ref in self.candidates:
             obj = self.heap.load(ref)
-            if obj.color == Color.PURPLE
+            if obj.color == GarbageColor.PURPLE:
                 self.mark_grey(obj)
             else:
-                candidates.remove(obj)
-                if obj.color == Color.BLACK and obj.rc == 0:
+                self.candidates.remove(obj)
+                if obj.color == GarbageColor.BLACK and obj.rc == 0:
                     self.heap.free(ref)
 
     def mark_grey(self, obj: Object):
-        if obj.color != Color.GREY:
-            obj.color = Color.GREY
+        if obj.color != GarbageColor.GREY:
+            obj.color = GarbageColor.GREY
             for f_name, f_ref in obj.fields.items():
                 child_obj = self.heap.load(f_ref)
                 if child_obj is not None:
@@ -176,23 +180,23 @@ class Runtime:
 
     def scan(self, ref: Reference):
         obj = self.heap.load(ref)
-        if obj.color == Color.GREY:
+        if obj.color == GarbageColor.GREY:
             if obj.rc > 0:
                 self.scan_black(obj)
             else:
-                obj.color = Color.WHITE
+                obj.color = GarbageColor.WHITE
                 for f_name, f_ref in obj.fields.items():
                     child_obj = self.heap.load(f_ref)
                     if child_obj is not None:
                         self.scan(child_obj)
 
     def scan_black(self, obj: Object):
-        obj.color = Color.BLACK
+        obj.color = GarbageColor.BLACK
         for f_name, f_ref in obj.fields.items():
             child_obj = self.heap.load(f_ref)
             if child_obj is not None:
                 child_obj.rc = child_obj.rc + 1
-                if child_obj.color != Color.BLACK:
+                if child_obj.color != GarbageColor.BLACK:
                     self.scan_black(child_obj)
 
     def collect_candidates(self):
@@ -202,8 +206,8 @@ class Runtime:
 
     def collect_white(self, ref: Reference):
         obj = self.heap.load(ref)
-        if obj.color == Color.WHITE and not self.candidates.contains(obj):
-            obj.color = Color.BLACK
+        if obj.color == GarbageColor.WHITE and not self.candidates.contains(obj):
+            obj.color = GarbageColor.BLACK
             for f_name, f_ref in obj.fields.items():
                 child_obj = self.heap.load(f_ref)
                 if child_obj is not None:
@@ -213,7 +217,7 @@ class Runtime:
 def main():
     runtime = Runtime(heap_size = 100, heap_alignment = 1)
     build_object_graph(runtime) 
-    runtime.collect(interactive = True)
+    runtime.collect()
 
 # builds the following object graph
 #
@@ -235,11 +239,11 @@ def build_object_graph(runtime: Runtime):
     # this should get collected
     c = runtime.new(Object("TO_BE_COLLECTED", []))
 
-    runtime.dereference(r1).set_field('a1', a1)
-    runtime.dereference(r1).set_field('a2', a2)
+    runtime.set_field(r1, 'a1', a1)
+    runtime.set_field(r1, 'a2', a2)
 
-    runtime.dereference(a1).set_field('b1', b1)
-    runtime.dereference(a1).set_field('b2', b2)
+    runtime.set_field(a1, 'b1', b1)
+    runtime.set_field(a1, 'b2', b2)
 
     runtime.add_root(r1)
 
