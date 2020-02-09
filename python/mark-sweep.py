@@ -15,12 +15,6 @@ class Object:
     def active_fields(self):
         return filter(lambda x: x is not None, self.fields)
 
-    def set_field(self, field: str, ref: Reference):
-        if field not in self.fields:
-            raise ValueError('unknown field: {} on obj: {}'.format(field, self.id))
-
-        self.fields[field] = ref
-
     def size(self) -> int:
         return len(self.fields) + 1
 
@@ -180,8 +174,13 @@ class Runtime:
     def add_root(self, ref: Reference):
         self.roots.append(ref)
 
-    def dereference(self, ref: Reference) -> Object:
-        return self.heap.load(ref)
+    def set_field(self, src: Reference, field: str, target: Reference):
+        src_object = self.heap.load(src)
+
+        if field not in src_object.fields:
+            raise ValueError('unknown field: {} on obj: {}'.format(field, self.id))
+
+        src_object.fields[field] = target
 
     def collect(self, interactive = False):
         self.collector.collect(self.roots)
@@ -211,11 +210,11 @@ def build_object_graph(runtime: Runtime):
     # this should get collected
     c = runtime.new(Object("TO_BE_COLLECTED", []))
 
-    runtime.dereference(r1).set_field('a1', a1)
-    runtime.dereference(r1).set_field('a2', a2)
+    runtime.set_field(r1, 'a1', a1)
+    runtime.set_field(r1, 'a2', a2)
 
-    runtime.dereference(a1).set_field('b1', b1)
-    runtime.dereference(a1).set_field('b2', b2)
+    runtime.set_field(a1, 'b1', b1)
+    runtime.set_field(a1, 'b2', b2)
 
     runtime.add_root(r1)
 

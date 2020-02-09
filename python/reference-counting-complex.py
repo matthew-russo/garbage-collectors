@@ -113,20 +113,20 @@ class Runtime:
     def set_field(self, src: Reference, field: str, target: Reference):
         src_object = self.heap.load(src)
 
-        if field not in self.fields:
+        if field not in src_object.fields:
             raise ValueError('unknown field: {} on obj: {}'.format(field, self.id))
 
-        add_reference(target)
-        delete_reference(src_object.fields[field])
-        self.fields[field] = ref
+        self.add_reference(target)
+        self.delete_reference(src_object.fields[field])
+        src_object.fields[field] = target
 
-    def add_reference(ref: Reference):
+    def add_reference(self, ref: Reference):
         if ref is not None:
             obj = self.heap.load(ref)
             obj.rc = obj.rc + 1
             obj.color = Color.BLACK
 
-    def delete_reference(ref: Reference):
+    def delete_reference(self, ref: Reference):
         if ref is not None:
             obj = self.heap.load(ref)
             obj.rc = obj.rc - 1
@@ -135,7 +135,7 @@ class Runtime:
             else:
                 self.candidate(obj)
 
-    def release(ref: Reference):
+    def release(self, ref: Reference):
         obj = self.heap.load(ref)
         for f_name, f_ref in obj.fields.items():
             delete_reference(f_ref)
@@ -143,19 +143,19 @@ class Runtime:
         if obj not in self.candidates:
             self.heap.free(ref)
 
-    def candidate(ref: Reference):
+    def candidate(self, ref: Reference):
         obj = self.heap.load(ref)
         if obj.color != Color.PURPLE
             obj.color = Color.PURPLE
             self.candidates.add(ref)
 
-    def collect():
+    def collect(self):
         self.mark_candidates()
         for ref in self.candidates:
             self.scan(ref)
         self.collect_candidates()
 
-    def mark_candidates():
+    def mark_candidates(self):
         for ref in candidates:
             obj = self.heap.load(ref)
             if obj.color == Color.PURPLE
@@ -165,7 +165,7 @@ class Runtime:
                 if obj.color == Color.BLACK and obj.rc == 0:
                     self.heap.free(ref)
 
-    def mark_grey(obj: Object):
+    def mark_grey(self, obj: Object):
         if obj.color != Color.GREY:
             obj.color = Color.GREY
             for f_name, f_ref in obj.fields.items():
@@ -174,7 +174,7 @@ class Runtime:
                     child_obj.rc = child_obj.rc - 1
                     self.mark_grey(child_obj)
 
-    def scan(ref: Reference):
+    def scan(self, ref: Reference):
         obj = self.heap.load(ref)
         if obj.color == Color.GREY:
             if obj.rc > 0:
@@ -186,7 +186,7 @@ class Runtime:
                     if child_obj is not None:
                         self.scan(child_obj)
 
-    def scan_black(obj: Object):
+    def scan_black(self, obj: Object):
         obj.color = Color.BLACK
         for f_name, f_ref in obj.fields.items():
             child_obj = self.heap.load(f_ref)
@@ -195,12 +195,12 @@ class Runtime:
                 if child_obj.color != Color.BLACK:
                     self.scan_black(child_obj)
 
-    def collect_candidates():
+    def collect_candidates(self):
         while self.candidates:
             ref = self.candidates.pop()
             self.collect_white(ref)
 
-    def collect_white(ref: Reference):
+    def collect_white(self, ref: Reference):
         obj = self.heap.load(ref)
         if obj.color == Color.WHITE and not self.candidates.contains(obj):
             obj.color = Color.BLACK

@@ -15,8 +15,6 @@ class Object:
     def active_fields(self):
         return filter(lambda x: x is not None, self.fields)
 
-
-
     def size(self) -> int:
         return len(self.fields) + 1
 
@@ -86,7 +84,6 @@ class Runtime:
     def __init__(self, heap_size: int, heap_alignment: int):
         self.roots = []
         self.heap = Heap(size = heap_size, alignment = heap_alignment)
-        self.collector = Collector(self.heap)
 
     # Mutator methods
     def new(self, obj: Object) -> Reference:
@@ -95,10 +92,7 @@ class Runtime:
         ref = self.heap.alloc(obj.size())
 
         if ref == None:
-            self.collector.collect(self.roots)
-            ref = self.heap.alloc(obj.size())
-            if ref == None:
-                raise Exception("out of memory")
+            raise Exception("out of memory")
   
         self.write(ref, obj)
         return ref
@@ -112,19 +106,19 @@ class Runtime:
     def set_field(self, src: Reference, field: str, target: Reference):
         src_object = self.heap.load(src)
 
-        if field not in self.fields:
+        if field not in src_object.fields:
             raise ValueError('unknown field: {} on obj: {}'.format(field, self.id))
 
-        add_reference(target)
-        delete_reference(src_object.fields[field])
-        self.fields[field] = ref
+        self.add_reference(target)
+        self.delete_reference(src_object.fields[field])
+        src_object.fields[field] = target
 
-    def add_reference(ref: Reference):
+    def add_reference(self, ref: Reference):
         if ref is not None:
             obj = self.heap.load(ref)
             obj.rc = obj.rc + 1
 
-    def delete_reference(ref: Reference):
+    def delete_reference(self, ref: Reference):
         if ref is not None:
             obj = self.heap.load(ref)
             obj.rc = obj.rc - 1
@@ -136,7 +130,6 @@ class Runtime:
 def main():
     runtime = Runtime(heap_size = 100, heap_alignment = 1)
     build_object_graph(runtime) 
-    runtime.collect(interactive = True)
 
 # builds the following object graph
 #
@@ -158,11 +151,11 @@ def build_object_graph(runtime: Runtime):
     # this should get collected
     c = runtime.new(Object("TO_BE_COLLECTED", []))
 
-    runtime.dereference(r1).set_field('a1', a1)
-    runtime.dereference(r1).set_field('a2', a2)
+    runtime.set_field(r1, 'a1', a1)
+    runtime.set_field(r1, 'a2', a2)
 
-    runtime.dereference(a1).set_field('b1', b1)
-    runtime.dereference(a1).set_field('b2', b2)
+    runtime.set_field(a1, 'b1', b1)
+    runtime.set_field(a1, 'b2', b2)
 
     runtime.add_root(r1)
 
