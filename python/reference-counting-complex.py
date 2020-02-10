@@ -103,9 +103,9 @@ class Runtime:
             obj = self.heap.load(ref)
             obj.rc = obj.rc - 1
             if obj.rc == 0:
-                self.release(obj)
+                self.release(ref)
             else:
-                self.candidate(obj)
+                self.candidate(ref)
 
     def release(self, ref: Reference):
         obj = self.heap.load(ref)
