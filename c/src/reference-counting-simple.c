@@ -76,100 +76,50 @@ void runtime_add_root(struct runtime * runtime, char * id)
     current->next = root_init(ref);
 }
 
-void runtime_assign_field(struct runtime * runtime, char * src_id, char * src_f_name, char * dst_id)
+void runtime_add_reference(struct runtime * runtime, struct reference * ref)
 {
-    struct reference * src_ref = (struct reference *)map_get(runtime->env, src_id);
-    struct object * src_obj = heap_load(runtime->heap, *src_ref);
-    struct reference * dst_ref = (struct reference *)map_get(runtime->env, dst_id);
-    map_insert(src_obj->fields, src_f_name, dst_ref);
-    printf("set field %s of obj %s at %p to reference of %s\n", src_f_name, src_id, src_obj, dst_id);
-}
-
-void runtime_mark_worklist(struct runtime * runtime, struct queue * worklist)
-{
-    printf("marking worklist \n");
-    fflush(stdout);
-    while (!queue_is_empty(worklist))
+    if (ref != NULL)
     {
-        struct object * obj = (struct object *)queue_dequeue(worklist);
-        for (struct map_iterator obj_field_iter = map_iter(obj->fields);
-            !map_iter_is_done(&obj_field_iter);
-            map_iter_next(&obj_field_iter))
-        {
-            struct map_node * f_node = map_iter_current_node(&obj_field_iter);
-
-            if (f_node->value == NULL)
-            {
-                printf("field: %s of obj: %s at %p is null, skipping\n", f_node->key, obj->id, obj);
-                continue;
-            }
-
-            struct reference * f_ref = (struct reference *)f_node->value;
-            struct object * child = heap_load(runtime->heap, *f_ref);
-            if (child == NULL)
-            {
-                printf("ACTIVE REFERENCE LEADING TO DEAD MEMORY. THIS SHOULD BE IMPOSSIBLE\n");
-                exit(1);
-            }
-
-            if (!child->header.is_marked)
-            {
-                child->header.is_marked = true;
-                queue_enqueue(worklist, child);
-            }
-        }
+        struct object * obj = heap_load(runtime->heap, *ref);
+        obj->header.rc++;
     }
 }
 
-void runtime_mark_from_roots(struct runtime * runtime)
+void runtime_delete_reference(struct runtime * runtime, struct reference * ref)
 {
-    printf("marking from roots \n");
-    fflush(stdout);
-    struct queue * worklist = queue_init(DEFAULT_HEAP_SIZE);
-    struct root * current_root = runtime->roots;
-    while (current_root != NULL)
+    if (ref != NULL)
     {
-        printf("fetching obj at current_root->ref->addr: %lu\n", current_root->ref->address);
-        fflush(stdout);
-        struct object * obj = heap_load(runtime->heap, *current_root->ref);
+        struct object * obj = heap_load(runtime->heap, *ref);
+        obj->header.rc--;
 
-        if (obj != NULL && !obj->header.is_marked)
+        if (obj->header.rc == 0)
         {
-            printf("visiting root: %s, marking header now\n", obj->id);
-            fflush(stdout);
-            obj->header.is_marked = true;
-            queue_enqueue(worklist, obj);
-            runtime_mark_worklist(runtime, worklist);
-        }
-        current_root = current_root->next;
-    }
-}
+            for (struct map_iterator obj_field_iter = map_iter(obj->fields);
+                !map_iter_is_done(&obj_field_iter);
+                map_iter_next(&obj_field_iter))
+            {
+                struct map_node * f_node = map_iter_current_node(&obj_field_iter);
+                struct reference * f_ref = (struct reference *)f_node->value;
+                runtime_delete_reference(runtime, f_ref);
+            }
 
-void runtime_sweep(struct runtime * runtime)
-{
-    printf("sweeping \n");
-    fflush(stdout);
-    for (struct heap_iterator heap_iter = heap_iterator_init(runtime->heap);
-        !heap_iter_is_done(&heap_iter);
-        heap_iter_next(&heap_iter))
-    {
-        struct object * obj = heap_iter_current_object(&heap_iter);
-        uint32_t size = obj->header.size;
-        printf("obj %s at %p is marked: %d \n", obj->id, obj, obj->header.is_marked);
-                fflush(stdout);
-        if (!obj->header.is_marked)
-        {
-            printf("FREEING %s: \n", obj->id);
-                fflush(stdout);
             heap_free(runtime->heap, obj);
         }
     }
 }
 
-void runtime_collect(struct runtime * runtime)
+void runtime_assign_field(struct runtime * runtime, char * src_id, char * src_f_name, char * dst_id)
 {
-    runtime_mark_from_roots(runtime);
-    runtime_sweep(runtime);
+    struct reference * src_ref = (struct reference *)map_get(runtime->env, src_id);
+    struct object * src_obj = heap_load(runtime->heap, *src_ref);
+    struct reference * currently_assigned_f_ref = (struct reference *)map_get(src_obj->fields, src_f_name);
+    struct reference * dst_ref = (struct reference *)map_get(runtime->env, dst_id);
+
+    runtime_add_reference(runtime, dst_ref);
+    runtime_delete_reference(runtime, currently_assigned_f_ref);
+
+    map_insert(src_obj->fields, src_f_name, dst_ref);
+    printf("set field %s of obj %s at %p to reference of %s\n", src_f_name, src_id, src_obj, dst_id);
 }
 
 int main()
@@ -250,8 +200,6 @@ int main()
     
     runtime_assign_field(runtime, "a1", "b1", "b1");
     runtime_assign_field(runtime, "a1", "b2", "b2");
-
-    runtime_collect(runtime);
 
     free(runtime);
     free(heap);

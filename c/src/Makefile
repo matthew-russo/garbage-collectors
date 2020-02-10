@@ -25,7 +25,7 @@ mark-compact: $(ODIR)/mark-compact.o $(OBJ)
 copying: $(ODIR)/copying.o $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
-reference-counting: $(ODIR)/reference-counting.o $(OBJ)
+reference-counting-simple: $(ODIR)/reference-counting-simple.o $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 .PHONY: clean

@@ -8,6 +8,7 @@ struct object_header
 {
     bool is_marked;
     uintptr_t forwarding_address;
+    uint32_t rc;
     uint32_t size;
 };
 
