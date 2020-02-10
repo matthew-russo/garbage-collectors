@@ -70,6 +70,11 @@ void heap_free(struct heap * heap, struct object * to_free)
     heap->bitmap[index] = 0;
 }
 
+void heap_clear(struct heap * heap)
+{
+    memset(heap->arena, 0, sizeof(struct object) * heap->size);
+}
+
 struct heap_iterator heap_iterator_init(struct heap * heap)
 {
     struct object * first_obj;

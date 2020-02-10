@@ -78,27 +78,24 @@ class Collector:
     def collect(self, roots: List[Reference]):
         self.worlist: List[Reference] = []
         for root in roots:
-            root.address = self.process(root)
+            root.address = self.forward(root)
         while self.worklist:
             ref = self.worklist.pop()
-            self.scan(ref)
+            obj = self.heap.load(ref)
+            self.scan(obj)
         self.heap.flip()
 
-    def scan(self, ref: Reference):
-        obj = self.heap.load(ref)
+    def scan(self, obj: Object):
         for f_name, f_ref in obj.fields.items():
-            obj.fields[f_name].address = self.process(f_ref)
-
-    def process(self, ref: Reference) -> int:
+            obj.fields[f_name].address = self.forward(f_ref)
+        
+    def forward(self, ref: Reference) -> int:
         obj: Object = self.heap.load(ref)
         if obj is not None:
-            return self.forward(obj)
-
-    def forward(self, obj: Object) -> int:
-        to_addr: int = obj.forwarding_address
-        if to_addr is None:
-            to_addr = self.copy(obj)
-        return to_addr
+            to_addr: int = obj.forwarding_address
+            if to_addr is None:
+                to_addr = self.copy(obj)
+            return to_addr
     
     def copy(self, obj: Object):
         to_addr: int = self.heap.alloc_from_copy(obj.size())

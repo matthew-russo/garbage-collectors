@@ -25,6 +25,7 @@ struct reference heap_store(struct heap * h, uintptr_t address, struct object * 
 bool heap_mem_allocated(struct heap * h, uintptr_t address);
 uintptr_t heap_alloc(struct heap * h, uint32_t size);
 void heap_free(struct heap * h, struct object * to_free);
+void heap_clear(struct heap * h);
 
 struct heap_iterator
 {
