@@ -24,7 +24,7 @@
 \begin{frame}
   \frametitle{Who Are You?}
   \begin{enumerate}
-    \item Name & Pronouns
+    \item Name \& Pronouns
     \item Why you joined this group?
     \item Any specific topics of interest? Projects you've worked on?
     \item Anything else you'd like us to know
@@ -32,18 +32,14 @@
 \end{frame}
 
 \begin{frame}
-  \frametitle{Why are we here? (and what are we not here for)}
-\end{frame}
-
-\begin{frame}
   \frametitle{Terminology}
   \begin{enumerate}
-    \item Stack & Heap \- Two places to store things
-    \item Runtime \- Invisible interfaces that handle everything between the Operating System and the User Code
-    \item Allocator \- Finds places to store things
-    \item Collector \- Reclaims places to store things
-    \item Mutator \- User code \-\- interacts with Runtime to make things happen
-    \item Root \- Entry in to the object graph. Stack variables, frame locals, global variables, etc.
+    \item Stack \& Heap \textendash{} Two places to store things
+    \item Runtime \textendash{} Invisible interfaces that handle everything between the Operating System and the User Code
+    \item Allocator \textendash{} Finds places to store things
+    \item Collector \textendash{} Reclaims places to store things
+    \item Mutator \textendash{} User code that interacts with Runtime to make things happen
+    \item Root \textendash{} Entry in to the object graph. Stack variables, frame locals, global variables, etc.
   \end{enumerate}
 \end{frame}
 
@@ -82,12 +78,45 @@
   \frametitle{Concerns?}
   \begin{itemize}
     \item What will go wrong with this over time?
+    \pause{}
+    \item Fragmentation!
+    %\begin{figure}
+    %\begin{tikzpicture}[scale=1.8, auto,swap]
+    %    % Draw a 7,11 network
+    %    % First we draw the vertices
+    %    \foreach \pos/\name in {{(0,2)/a}, {(2,1)/b}, {(4,1)/c},
+    %                            {(0,0)/d}, {(3,0)/e}, {(2,-1)/f}, {(4,-1)/g}}
+    %        \node[vertex] (\name) at \pos {$\name$};
+    %    % Connect vertices with edges and draw weights
+    %    \foreach \source/ \dest /\weight in {b/a/7, c/b/8,d/a/5,d/b/9,
+    %                                         e/b/7, e/c/5,e/d/15,
+    %                                         f/d/6,f/e/8,
+    %                                         g/e/9,g/f/11}
+    %        \path[edge] (\source) -- node[weight] {$\weight$} (\dest);
+    %    % Start animating the vertex and edge selection. 
+    %    \foreach \vertex / \fr in {d/1,a/2,f/3,b/4,e/5,c/6,g/7}
+    %        \path<\fr-> node[selected vertex] at (\vertex) {$\vertex$};
+    %    % For convenience we use a background layer to highlight edges
+    %    % This way we don't have to worry about the highlighting covering
+    %    % weight labels. 
+    %    \begin{pgfonlayer}{background}
+    %        \pause
+    %        \foreach \source / \dest in {d/a,d/f,a/b,b/e,e/c,e/g}
+    %            \path<+->[selected edge] (\source.center) -- (\dest.center);
+    %        \foreach \source / \dest / \fr in {d/b/4,d/e/5,e/f/5,b/c/6,f/g/7}
+    %            \path<\fr->[ignored edge] (\source.center) -- (\dest.center);
+    %    \end{pgfonlayer}
+    %\end{tikzpicture}
+    %\end{figure}
   \end{itemize}
 \end{frame}
 
 \begin{frame}
   \frametitle{Mark-Compact Collection}
-  \item Handling Fragmented Memory
+  \begin{heading}
+    Handling Fragmented Memory
+  \end{heading}
+
   \begin{enumerate}
     \item Step 1. Mark the Object Graph
     \item Step 2. Iterate over the heap
@@ -98,7 +127,10 @@
 
 \begin{frame}
   \frametitle{Copying Collection}
-  \item Handling Fragmented Memory but I'm a little bit lazier
+  \begin{heading}
+    Handling Fragmented Memory but I'm a little bit lazier
+  \end{heading}
+
   \begin{enumerate}
     \item Step 1. During Intialization: Split the heap in two
     \item Step 2. Mark the Object Graph
@@ -111,42 +143,59 @@
 
 \begin{frame}
   \frametitle{Reference Counting Collection}
-  \item But why not ++ and \-\-
+
+  \begin{heading}
+    But why not ++ and \textendash{} \textendash{}
+  \end{heading}
+
+  \item Everytime an object is referenced, increase its reference count, when it stops being referenced, decrease that count
   \item Read/Write Barriers
   \item Write Barries now increment and decrement reference counts of objects
 \end{frame}
 
 \begin{frame}
   \frametitle{Problems?}
-  \item Cyclic references
-  \item Unpredictable, recursive collections
-\end{frame}
-
-\begin{frame}
-  \frametitle{Complex Reference Counting Collection}
-  \item Deferred collection
-  \item Identifying cycles
+  \begin{enumerate}
+      \pause{}
+    \item Cyclic references
+      \pause{}
+    \item Unpredictable, recursive collections
+  \end{enumerate}
 \end{frame}
 
 \begin{frame}
   \frametitle{A Unified Theory of Garbage Collection}
+  
+  \begin{enumerate}
+    \item TODO
+  \end{enumerate}
 \end{frame}
 
 
 \begin{frame}
   \frametitle{What Next?}
-  \item Concurrent collection
-  \item Generational collection
-  \item Production GC systems: JVM (CMS, G1GC, ZGC, etc.), Go, CLR (???)
-  \item Monitoring/Tuning GC systems: what metrics are available, how to analyze performance, what parameters to tune
+  
+  \begin{enumerate}
+    \item Concurrent collection
+    \item Generational collection
+    \item Production GC systems: JVM (CMS, G1GC, ZGC, etc.), Go, CLR (???)
+    \item Monitoring/Tuning GC systems: what metrics are available, how to analyze performance, what parameters to tune
+  \end{enumerate}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Questions?}
-  \item Medium
-  \item Time/Space
-  \item Topics
-  \item Speakers
+  \frametitle{Questions for me?}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Questions for you}
+
+  \begin{enumerate}
+    \item Medium
+    \item Time/Space
+    \item Topics
+    \item Speakers
+  \end{enumerate}
 \end{frame}
 
 \end{document}
