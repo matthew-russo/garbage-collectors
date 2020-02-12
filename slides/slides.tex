@@ -16,7 +16,7 @@
   \begin{enumerate}
     \item Consistently reinventing the wheel
     \item Enjoy listening to and discovering new music. Would like to one day make music!
-    \item Software Engineer for AWS working on ECR
+    \item Patiently waiting for the weather to get nice so I can jkj
     \item Knowledge sharing around these more `mysterious' parts of software development.
   \end{enumerate}
 \end{frame}
@@ -80,34 +80,6 @@
     \item What will go wrong with this over time?
     \pause{}
     \item Fragmentation!
-    %\begin{figure}
-    %\begin{tikzpicture}[scale=1.8, auto,swap]
-    %    % Draw a 7,11 network
-    %    % First we draw the vertices
-    %    \foreach \pos/\name in {{(0,2)/a}, {(2,1)/b}, {(4,1)/c},
-    %                            {(0,0)/d}, {(3,0)/e}, {(2,-1)/f}, {(4,-1)/g}}
-    %        \node[vertex] (\name) at \pos {$\name$};
-    %    % Connect vertices with edges and draw weights
-    %    \foreach \source/ \dest /\weight in {b/a/7, c/b/8,d/a/5,d/b/9,
-    %                                         e/b/7, e/c/5,e/d/15,
-    %                                         f/d/6,f/e/8,
-    %                                         g/e/9,g/f/11}
-    %        \path[edge] (\source) -- node[weight] {$\weight$} (\dest);
-    %    % Start animating the vertex and edge selection. 
-    %    \foreach \vertex / \fr in {d/1,a/2,f/3,b/4,e/5,c/6,g/7}
-    %        \path<\fr-> node[selected vertex] at (\vertex) {$\vertex$};
-    %    % For convenience we use a background layer to highlight edges
-    %    % This way we don't have to worry about the highlighting covering
-    %    % weight labels. 
-    %    \begin{pgfonlayer}{background}
-    %        \pause
-    %        \foreach \source / \dest in {d/a,d/f,a/b,b/e,e/c,e/g}
-    %            \path<+->[selected edge] (\source.center) -- (\dest.center);
-    %        \foreach \source / \dest / \fr in {d/b/4,d/e/5,e/f/5,b/c/6,f/g/7}
-    %            \path<\fr->[ignored edge] (\source.center) -- (\dest.center);
-    %    \end{pgfonlayer}
-    %\end{tikzpicture}
-    %\end{figure}
   \end{itemize}
 \end{frame}
 
@@ -138,6 +110,7 @@
     \item Step 4. If the Object hasn't been marked: Do nothing
     \item Step 5. If the Object has    been marked: Move it to the first free space in the opposite heap space
     \item Step 6. Flip the two heap spaces
+    \item Step 7. Clear the old heap space
   \end{enumerate}
 \end{frame}
 
@@ -165,10 +138,10 @@
 
 \begin{frame}
   \frametitle{A Unified Theory of Garbage Collection}
-  
-  \begin{enumerate}
-    \item TODO
-  \end{enumerate}
+ 
+  Tracing and Reference Counting are different but complementary approaches to Garbage Collection.
+  Many production-ready GC systems will use a combination of various strategies covered, with
+  reference counting being used to detect garbage, and tracing being used to detect live objects.
 \end{frame}
 
 
@@ -178,7 +151,7 @@
   \begin{enumerate}
     \item Concurrent collection
     \item Generational collection
-    \item Production GC systems: JVM (CMS, G1GC, ZGC, etc.), Go, CLR (???)
+    \item Production GC systems: JVM (CMS, G1GC, ZGC, etc.), Go, CLR, (???)
     \item Monitoring/Tuning GC systems: what metrics are available, how to analyze performance, what parameters to tune
   \end{enumerate}
 \end{frame}
