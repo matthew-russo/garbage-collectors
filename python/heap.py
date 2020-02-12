@@ -1,4 +1,6 @@
 from typing import List
+import shutil
+from functools import reduce
 from object import Object, Reference
 
 
@@ -11,6 +13,7 @@ class Heap:
         self.size = size
         self.contents = [None for _ in range(size)]
         self.objs = {} # obj id to obj
+        self.visualizer = HeapVisualizer(self)
 
     def load(self, ref: Reference) -> Object:
         obj_id = self.contents[ref.address]
@@ -27,8 +30,8 @@ class Heap:
         self.objs[obj.id] = obj
 
     def alloc(self, size: int) -> Reference:
-        print('trying to allocate a chunk of size: {} while heap is: {}'.format(size, self.contents))
-        
+        print('trying to allocate a chunk of size: {}'.format(size))
+
         # need to find the first range of `size` that is all `None`s
         in_a_row = 0
         for n, content in enumerate(self.contents):
@@ -53,4 +56,58 @@ class Heap:
         for i in range(ref.address, ref.address + ref.size):
             self.contents[i] = None
 
+    def clear(self):
+        self.contents = [None for _ in range(self.size)]
+        self.objs = {} # obj id to obj
+
+    def visualize(self):
+        self.visualizer.visualize()
+
+
+class HeapVisualizerCell:
+    def __init__(self, cell_id: str):
+        self.cell_top_bottom = '+{}+'.format('-' * (len(cell_id) + 2))
+        self.cell_middle = '| {} |'.format(cell_id)
+
+
+class HeapVisualizer:
+    def __init__(self, heap: Heap):
+        self.heap: Heap = heap
+        terminal_size = shutil.get_terminal_size((80, 20))
+        self.columns = terminal_size.columns
+
+    def visualize(self):
+        cells: [] = []
+        for item in self.heap.contents:
+            cell_id = item
+            if item is None:
+                cell_id = ' '
+
+            cells.append(HeapVisualizerCell(cell_id))
+
+        return self.megacell(cells)
+
+    def megacell(self, cells: List[HeapVisualizerCell]):
+        tops = map(lambda c: c.cell_top_bottom, cells)
+        middles = map(lambda c: c.cell_middle, cells)
+        bottoms = map(lambda c: c.cell_top_bottom, cells)
+        
+        megatop = reduce(lambda a, b: a + b, tops)
+        megamiddle = reduce(lambda a, b: a + b, middles)
+        megabottom = reduce(lambda a, b: a + b, bottoms)
+
+        split_tops    = list(divide_chunks(megatop,    self.columns))
+        split_middles = list(divide_chunks(megamiddle, self.columns))
+        split_bottoms = list(divide_chunks(megabottom, self.columns))
+
+        for i in range(0, len(split_tops)):
+            print(split_tops[i])
+            print(split_middles[i])
+            print(split_bottoms[i])
+
+def divide_chunks(l, n): 
+    # looping till length l 
+    for i in range(0, len(l), n):  
+        yield l[i:i + n] 
+ 
 

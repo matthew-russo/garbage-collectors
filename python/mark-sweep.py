@@ -1,4 +1,5 @@
 from typing import List
+import sys
 from object import Object, Reference
 from heap import Heap
 
@@ -70,9 +71,9 @@ class Collector:
 
 class Runtime:
     def __init__(self, heap_size: int, heap_alignment: int):
-        self.roots = []
-        self.heap = Heap(size = heap_size, alignment = heap_alignment)
-        self.collector = Collector(self.heap)
+        self.roots: Dict[str, Reference] = {}
+        self.heap: Heap = Heap(size = heap_size, alignment = heap_alignment)
+        self.collector: Collector = Collector(self.heap)
 
     # Mutator methods
     def new(self, obj: Object) -> Reference:
@@ -81,12 +82,13 @@ class Runtime:
         ref = self.heap.alloc(obj.size())
 
         if ref == None:
-            self.collector.collect(self.roots)
+            self.collector.collect(self.roots.values())
             ref = self.heap.alloc(obj.size())
             if ref == None:
                 raise Exception("out of memory")
   
         self.write(ref, obj)
+        self.roots[obj.id] = ref
         return ref
     
     def read(self, ref: Reference) -> Object:
@@ -94,9 +96,6 @@ class Runtime:
     
     def write(self, ref: Reference, obj: Object):
         self.heap.store(ref, obj)
-
-    def add_root(self, ref: Reference):
-        self.roots.append(ref)
 
     def set_field(self, src: Reference, field: str, target: Reference):
         src_object = self.heap.load(src)
@@ -106,8 +105,19 @@ class Runtime:
 
         src_object.fields[field] = target
 
+    def drop(self, obj_id: str):
+        if obj_id in self.roots:
+            del self.roots[obj_id]
+        else:
+            print("attempting to drop object that doesn't exist: {}".format(obj_id))
+            sys.exit(1)
+
     def collect(self):
-        self.collector.collect(self.roots)
+        print('heap before collection: ')
+        self.heap.visualize()
+        self.collector.collect(self.roots.values())
+        print('heap after collection: ')
+        self.heap.visualize()
 
 def main():
     runtime = Runtime(heap_size = 100, heap_alignment = 1)
@@ -121,18 +131,24 @@ def main():
 #             a1         a2
 #            /  \
 #           b1   b2       
-#                          c <- this should get collected
+#                            c <- this should get collected
+#
 def build_object_graph(runtime: Runtime):
     r1 = runtime.new(Object('r1', ['a1', 'a2']))
+    print('\n\n')
 
     a1 = runtime.new(Object('a1', ['b1', 'b2']))
+    print('\n\n')
     a2 = runtime.new(Object('a2', []))
+    print('\n\n')
     
     b1 = runtime.new(Object('b1', []))
+    print('\n\n')
     b2 = runtime.new(Object('b2', []))
+    print('\n\n')
     
     # this should get collected
-    c = runtime.new(Object("TO_BE_COLLECTED", []))
+    to_be_collected = runtime.new(Object("c", []))
 
     runtime.set_field(r1, 'a1', a1)
     runtime.set_field(r1, 'a2', a2)
@@ -140,7 +156,10 @@ def build_object_graph(runtime: Runtime):
     runtime.set_field(a1, 'b1', b1)
     runtime.set_field(a1, 'b2', b2)
 
-    runtime.add_root(r1)
+    runtime.drop('a1')
+    runtime.drop('a2')
+    runtime.drop('b2')
+    runtime.drop('c')
 
 
 if __name__ == "__main__":

@@ -1,79 +1,22 @@
 from typing import List
-
+import sys
 from object import Object, Reference
+from heap import Heap
 
-class Heap:
-    def __init__(self, size: int, alignment: int):
-        if size % alignment != 0:
-            msg = 'Heap size needs to be a multiple of given alignment: {}, but was {}'.format(alignment, size)
-            raise ValueError(msg)
-        actual_size = size // 2
-        self.size: int                   = actual_size
-        self.current: List[Reference] = [None for _ in range(actual_size)]
-        self.copy_space: List[Reference]   = [None for _ in range(actual_size)]
-        self.copy_ptr = 0
-        self.objs: Dict[str, Object]     = {} # obj id to obj
-
-    def load(self, ref: Reference) -> Object:
-        obj_id = self.current[ref.address]
-        return self.objs[obj_id]
-    
-    def store(self, ref: Reference, obj: Object, is_copy=False):
-        memory_space: List[Reference] = self.current
-
-        if is_copy:
-            memory_space = self.copy_space
-
-        if ref.size != obj.size():
-            print('Trying to store object of size: {} in a reference slot of size: {}'.format(obj.size(), ref.size))
-            sys.exit(1)
-
-        for i in range(ref.address, ref.address + ref.size):
-            self.current[i] = obj.id
-        
-        self.objs[obj.id] = obj
-
-    def alloc(self, size: int) -> Reference:
-        print('trying to allocate a chunk of size: {} while heap is: {}'.format(size, self.current))
-        
-        # need to find the first range of `size` that is all `None`s
-        in_a_row = 0
-        for n, content in enumerate(self.current):
-            if content is None:
-                in_a_row += 1
-
-                if in_a_row == size:
-                    starting_address = n - size + 1
-                    print('found a valid chunk to allocate starting at address: {}'.format(starting_address))
-                    for i in range(starting_address, starting_address + size):
-                        self.current[i] = "__ALLOCATED_BUT_EMPTY__"
-                    return Reference(starting_address, size)
-            else:
-                in_a_row = 0
-
-        return None
-
-    def alloc_from_copy(self, size: int) -> Reference:
-        to_return: int = self.copy_ptr
-        self.copy_ptr += size
-        return to_return
-
-    def flip(self):
-        self.current = self.copy_space
-        self.copy_space = [None for _ in range(len(self.current))]
-        self.copy_ptr = 0
-
-    def free(self, ref: Reference):
-        obj_id = self.current[ref.address]
-        del self.objs[obj_id]
-
-        for i in range(ref.address, ref.address + ref.size):
-            self.current[i] = None
 
 class Collector:
-    def __init__(self, heap: Heap):
-        self.heap: Heap = heap
+    def __init__(self, from_heap: Heap, to_heap: Heap):
+        self.from_heap: Heap = from_heap
+        self.to_heap: Heap = to_heap
         self.worklist: List[Reference] = []
+
+    def flip_heaps(self):
+        temp = self.from_heap
+        self.from_heap = self.to_heap
+        self.to_heap = temp
+        self.to_heap.clear()
+
+        return self.from_heap, self.to_heap
 
     def collect(self, roots: List[Reference]):
         self.worlist: List[Reference] = []
@@ -81,69 +24,81 @@ class Collector:
             root.address = self.forward(root)
         while self.worklist:
             ref = self.worklist.pop()
-            obj = self.heap.load(ref)
+            obj = self.from_heap.load(ref)
             self.scan(obj)
-        self.heap.flip()
+        return self.flip_heaps()
 
     def scan(self, obj: Object):
         for f_name, f_ref in obj.fields.items():
             obj.fields[f_name].address = self.forward(f_ref)
         
     def forward(self, ref: Reference) -> int:
-        obj: Object = self.heap.load(ref)
+        obj: Object = self.from_heap.load(ref)
         if obj is not None:
             to_addr: int = obj.forwarding_address
             if to_addr is None:
-                to_addr = self.copy(obj)
+                to_ref = self.copy(obj)
+                to_addr = to_ref.address
             return to_addr
     
-    def copy(self, obj: Object):
-        to_addr: int = self.heap.alloc_from_copy(obj.size())
-        self.heap.store(Reference(address=to_addr, size=obj.size()), obj, is_copy=True)
-        obj.forwarding_address = to_addr
-        self.worklist.append(Reference(address=to_addr, size=obj.size()))
-        return to_addr
+    def copy(self, obj: Object) -> Reference:
+        to_ref: Reference = self.to_heap.alloc(obj.size())
+        self.to_heap.store(to_ref, obj)
+        obj.forwarding_address = to_ref.address
+        self.worklist.append(to_ref)
+        return to_ref
 
 class Runtime:
     def __init__(self, heap_size: int, heap_alignment: int):
-        self.roots = []
-        self.heap = Heap(size = heap_size, alignment = heap_alignment)
-        self.collector = Collector(self.heap)
+        self.roots: Dict[str, Reference] = {}
+        actual_heap_size = heap_size // 2
+        self.from_heap = Heap(size = actual_heap_size, alignment = heap_alignment)
+        self.to_heap = Heap(size = actual_heap_size, alignment = heap_alignment)
+        self.collector = Collector(self.from_heap, self.to_heap)
 
     # Mutator methods
     def new(self, obj: Object) -> Reference:
         print("attempting to allocate new object of size {}, with id: {}".format(obj.size(), obj.id))
 
-        ref = self.heap.alloc(obj.size())
+        ref = self.from_heap.alloc(obj.size())
 
         if ref == None:
-            self.collector.collect(self.roots)
-            ref = self.heap.alloc(obj.size())
+            self.collector.collect(self.roots.values())
+            ref = self.from_heap.alloc(obj.size())
             if ref == None:
                 raise Exception("out of memory")
   
         self.write(ref, obj)
+        self.roots[obj.id] = ref
         return ref
     
     def read(self, ref: Reference) -> Object:
-        return self.heap.load(ref)
+        return self.from_heap.load(ref)
     
     def write(self, ref: Reference, obj: Object):
-        self.heap.store(ref, obj)
+        self.from_heap.store(ref, obj)
 
     def set_field(self, src: Reference, field: str, target: Reference):
-        src_object = self.heap.load(src)
+        src_object = self.from_heap.load(src)
 
         if field not in src_object.fields:
             raise ValueError('unknown field: {} on obj: {}'.format(field, self.id))
 
         src_object.fields[field] = target
 
-    def add_root(self, ref: Reference):
-        self.roots.append(ref)
+    def drop(self, obj_id: str):
+        if obj_id in self.roots:
+            del self.roots[obj_id]
+        else:
+            print("attempting to drop object that doesn't exist: {}".format(obj_id))
+            sys.exit(1)
 
     def collect(self):
-        self.collector.collect(self.roots)
+        print('heap before collection: ')
+        self.from_heap.visualize()
+        self.from_heap, self.to_heap = self.collector.collect(self.roots.values())
+        print('heap after collection: ')
+        self.from_heap.visualize()
 
 def main():
     runtime = Runtime(heap_size = 100, heap_alignment = 1)
@@ -168,7 +123,7 @@ def build_object_graph(runtime: Runtime):
     b2 = runtime.new(Object('b2', []))
     
     # this should get collected
-    c = runtime.new(Object("TO_BE_COLLECTED", []))
+    c = runtime.new(Object("c", []))
 
     runtime.set_field(r1, 'a1', a1)
     runtime.set_field(r1, 'a2', a2)
@@ -176,7 +131,10 @@ def build_object_graph(runtime: Runtime):
     runtime.set_field(a1, 'b1', b1)
     runtime.set_field(a1, 'b2', b2)
 
-    runtime.add_root(r1)
+    runtime.drop('a1')
+    runtime.drop('a2')
+    runtime.drop('b2')
+    runtime.drop('c')
 
 
 if __name__ == "__main__":
