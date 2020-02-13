@@ -192,6 +192,63 @@ def build_object_graph(runtime: Runtime):
     runtime.drop('b2')
     runtime.drop('c')
 
+    print('heap before r1 alloc: ')
+    runtime.heap.visualize()
+    rr1 = runtime.new(Object('rr1', ['a1', 'a2']))
+    print('heap after r1 alloc: ')
+    runtime.heap.visualize()
+
+
+    print('heap before r1 alloc: ')
+    runtime.heap.visualize()
+    ar1 = runtime.new(Object('ar1', ['b1', 'b2']))
+    print('heap after r1 alloc: ')
+    runtime.heap.visualize()
+
+    print('heap after r1 alloc: ')
+    runtime.heap.visualize()
+    ar2 = runtime.new(Object('ar2', []))
+    print('heap after r1 alloc: ')
+    runtime.heap.visualize()
+
+
+    print('heap after r1 alloc: ')
+    runtime.heap.visualize()
+    br1 = runtime.new(Object('br1', []))
+    print('heap after r1 alloc: ')
+    runtime.heap.visualize()
+
+
+    print('heap after r1 alloc: ')
+    runtime.heap.visualize()
+    br2 = runtime.new(Object('br2', []))
+    print('heap after r1 alloc: ')
+    runtime.heap.visualize()
+
+    print('heap after r1 alloc: ')
+    runtime.heap.visualize()
+    # this should get collected
+    to_be_collected2 = runtime.new(Object("cr", []))
+    print('heap after r1 alloc: ')
+    runtime.heap.visualize()
+
+    #r1.a1 = a1
+    runtime.set_field(rr1, 'a1', ar1)
+    runtime.set_field(rr1, 'a2', ar2)
+
+    runtime.set_field(ar1, 'b1', br1)
+    runtime.set_field(ar1, 'b2', br2)
+
+
+    
+    runtime.drop('ar1')
+    
+
+    runtime.drop('ar2')
+    runtime.drop('br2')
+    runtime.drop('cr')
+
+
 
 if __name__ == "__main__":
     main()
